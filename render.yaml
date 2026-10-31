@@ -1,0 +1,20 @@
+# تعقيم / Taqeem — one free Node Web Service, independent Supabase database.
+services:
+  - type: web
+    name: taqeem
+    runtime: node
+    plan: free
+    region: singapore
+    autoDeployTrigger: commit
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
