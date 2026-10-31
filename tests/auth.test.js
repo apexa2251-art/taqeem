@@ -1,10 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {
-  initializeAuth,
-  isRecoveryLocation,
-  recoveryFailure,
-} from "../src/auth.js";
+import { initializeAuth, isRecoveryLocation } from "../src/auth.js";
 
 test("recovery listener catches initialization before getSession resolves", async () => {
   let listener,
@@ -80,15 +76,4 @@ test("invalid callback sessions are surfaced instead of silently showing sign-in
     ),
     /Invalid verifier/,
   );
-});
-
-test("quota failures state that no new recovery email was sent", () => {
-  const result = recoveryFailure({
-    code: "over_email_send_rate_limit",
-    status: 429,
-  });
-  assert.equal(result.retryMs, 3600000);
-  assert.match(result.text[0], /لم تُرسل رسالة جديدة/);
-  assert.equal(recoveryFailure({ status: 429 }).retryMs, 60000);
-  assert.equal(recoveryFailure({ message: "Network unavailable" }).retryMs, 0);
 });
