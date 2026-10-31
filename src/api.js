@@ -38,3 +38,17 @@ export function action(op, branch, input) {
     body: JSON.stringify({ op, branch, input }),
   });
 }
+export async function staffAction(input) {
+  const { data, error } = await supabase.functions.invoke("manage-staff", {
+    body: input,
+  });
+  if (error) {
+    let code = "ACCOUNT_REQUEST_FAILED";
+    try {
+      code = (await error.context?.json())?.error || code;
+    } catch {}
+    throw new Error(code);
+  }
+  if (!data?.ok) throw new Error(data?.error || "ACCOUNT_REQUEST_FAILED");
+  return data;
+}

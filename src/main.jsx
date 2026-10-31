@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { configure, supabase, api, action } from "./api";
 import CycleForm from "./CycleForm";
+import { StaffAccessPanel, OwnPasswordPanel } from "./AccountAccess";
 import { errors } from "./messages";
 import { initializeAuth, isRecoveryLocation } from "./auth";
 import {
@@ -142,7 +143,9 @@ function App() {
     };
   }, []);
   const error = (e) => {
-    const key = Object.keys(errors).find((k) => e.message.includes(k));
+    const key = Object.keys(errors).find(
+      (k) => e.code === k || e.message?.includes(k),
+    );
     setMessage({
       kind: "error",
       text: key
@@ -1416,8 +1419,19 @@ function App() {
               "Each staff member has a personal account and full name. Branch membership controls records they can see. Do not type staff names on their behalf in cycle records.",
             )}
           </div>
+          <OwnPasswordPanel t={t} />
           {me.profile.system_admin ? (
             <>
+              <StaffAccessPanel
+                t={t}
+                branch={branch}
+                branches={me.branches}
+                profiles={data.profiles}
+                run={run}
+                loading={loading}
+                roleName={roleName}
+                ownId={me.profile.id}
+              />
               <section className="panel">
                 <h2>
                   {t(

@@ -1,4 +1,40 @@
 export const errors = {
+  invalid_credentials: [
+    "البريد أو كلمة المرور غير صحيحة. استخدم بيانات حساب تعقيم.",
+    "Incorrect email or password. Use your Taqeem account credentials.",
+  ],
+  PASSWORD_LENGTH: [
+    "كلمة المرور يجب أن تكون من 12 إلى 128 حرفًا.",
+    "Password must contain 12 to 128 characters.",
+  ],
+  STAFF_DETAILS_REQUIRED: [
+    "أكمل اسم الموظف وبريد الدخول والفرع والدور.",
+    "Complete the staff name, sign-in email, branch and role.",
+  ],
+  ACCOUNT_CREATE_FAILED: [
+    "تعذر إنشاء الحساب. قد يكون البريد مسجلاً أو كلمة المرور غير مقبولة.",
+    "Could not create the account. The email may already be registered or the password may not meet the requirements.",
+  ],
+  PASSWORD_UPDATE_FAILED: [
+    "تعذر تحديث كلمة المرور. اختر كلمة جديدة مطابقة للشروط.",
+    "Could not update the password. Choose a new password that meets the requirements.",
+  ],
+  ACCOUNT_RATE_LIMIT: [
+    "محاولات إدارة الحسابات كثيرة. انتظر عشر دقائق.",
+    "Too many account changes. Please wait ten minutes.",
+  ],
+  USER_NOT_FOUND: [
+    "حساب الموظف غير موجود أو غير مفعّل.",
+    "The staff account is missing or inactive.",
+  ],
+  AUDIT_UNAVAILABLE: [
+    "تعذر توثيق العملية، لذلك لم يتم تغيير الحساب. حاول لاحقًا.",
+    "The audit service is unavailable, so the account was not changed. Try again later.",
+  ],
+  ACCOUNT_REQUEST_FAILED: [
+    "تعذر تنفيذ إدارة الحسابات. تواصل مع المسؤول.",
+    "Account management could not be completed. Contact your administrator.",
+  ],
   CYCLE_NUMBER_REQUIRED: [
     "اختر الجهاز وأدخل رقم الدورة الحقيقي من التقرير.",
     "Choose the device and enter the actual machine cycle number from the printout.",
