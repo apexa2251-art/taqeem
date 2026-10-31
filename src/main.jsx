@@ -33,7 +33,7 @@ import {
 import { configure, supabase, api, action } from "./api";
 import CycleForm from "./CycleForm";
 import { errors } from "./messages";
-import { initializeAuth, isRecoveryLocation } from "./auth";
+import { initializeAuth, isRecoveryLocation, recoveryFailure } from "./auth";
 import {
   approvalIssues,
   deriveNotifications,
@@ -97,6 +97,20 @@ function App() {
     [recovery, setRecovery] = useState(() =>
       isRecoveryLocation(window.location),
     );
+  const [recoveryRetryAt, setRecoveryRetryAt] = useState(
+    () => Number(localStorage.getItem("taqeem-recovery-retry-at")) || 0,
+  );
+  useEffect(() => {
+    if (!recoveryRetryAt) return;
+    const timer = setTimeout(
+      () => {
+        localStorage.removeItem("taqeem-recovery-retry-at");
+        setRecoveryRetryAt(0);
+      },
+      Math.max(0, recoveryRetryAt - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [recoveryRetryAt]);
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
@@ -1808,7 +1822,9 @@ function App() {
                   <button
                     type="button"
                     className="text-button"
-                    disabled={!configured}
+                    disabled={
+                      loading || !configured || recoveryRetryAt > Date.now()
+                    }
                     onClick={async (e) => {
                       const email = e.currentTarget.form.elements.email.value;
                       if (!email) {
@@ -1821,23 +1837,50 @@ function App() {
                         });
                         return;
                       }
-                      const { error: err } =
-                        await supabase.auth.resetPasswordForEmail(email, {
-                          redirectTo:
-                            window.location.origin + "/reset-password",
-                        });
-                      if (err) error(err);
-                      else
+                      if (loading || recoveryRetryAt > Date.now()) return;
+                      setLoading(true);
+                      try {
+                        const { error: err } =
+                          await supabase.auth.resetPasswordForEmail(email, {
+                            redirectTo:
+                              window.location.origin + "/reset-password",
+                          });
+                        if (err) throw err;
                         setMessage({
                           kind: "success",
                           text: t(
-                            "إذا كان البريد مسجلاً فستصلك تعليمات الاستعادة.",
-                            "If the email is registered, recovery instructions will arrive.",
+                            "إذا كان البريد مسجلاً فستصلك رسالة جديدة. افتح أحدث رسالة في المتصفح نفسه، ولا تطلب رابطًا آخر أثناء الانتظار.",
+                            "If the email is registered, a new email will arrive. Open the latest email in the same browser, and do not request another link while waiting.",
                           ),
                         });
+                        const until = Date.now() + 60000;
+                        localStorage.setItem(
+                          "taqeem-recovery-retry-at",
+                          String(until),
+                        );
+                        setRecoveryRetryAt(until);
+                      } catch (err) {
+                        const failure = recoveryFailure(err);
+                        setMessage({ kind: "error", text: t(...failure.text) });
+                        if (failure.retryMs) {
+                          const until = Date.now() + failure.retryMs;
+                          localStorage.setItem(
+                            "taqeem-recovery-retry-at",
+                            String(until),
+                          );
+                          setRecoveryRetryAt(until);
+                        }
+                      } finally {
+                        setLoading(false);
+                      }
                     }}
                   >
-                    {t("نسيت كلمة المرور؟", "Forgot password?")}
+                    {recoveryRetryAt > Date.now()
+                      ? t(
+                          "انتظر قبل طلب رابط آخر",
+                          "Please wait before requesting another link",
+                        )
+                      : t("نسيت كلمة المرور؟", "Forgot password?")}
                   </button>
                 )}
               </form>
