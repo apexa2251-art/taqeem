@@ -72,7 +72,7 @@ function fixture({ system_admin = false, active = true, valid = true } = {}) {
         body: JSON.stringify(input),
       }),
     );
-  return { call, events, changes, rows };
+  return { call, handle, events, changes, rows };
 }
 const password = "Temporary-Password-123";
 test("anonymous and invalid sessions cannot reset passwords", async () => {
@@ -193,4 +193,19 @@ test("dashboard secret-key header is accepted but a publishable key is rejected"
     ).status,
     200,
   );
+});
+
+test("plain-text dashboard reset still requires the server key and existing admin profile", async () => {
+  const f = fixture({ system_admin: true });
+  const request = (token) =>
+    new Request("https://edge.example?reset_admin=" + uid, {
+      method: "POST",
+      headers: { apikey: token, "Content-Type": "text/plain" },
+      body: password,
+    });
+  assert.equal((await f.handle(request("public-key"))).status, 401);
+  assert.equal(f.changes.length, 0);
+  assert.equal((await f.handle(request("server-only"))).status, 200);
+  assert.equal(f.changes[0][1], uid);
+  assert.equal(JSON.stringify(f.events).includes(password), false);
 });
