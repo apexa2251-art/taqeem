@@ -33,7 +33,7 @@ import {
 import { configure, supabase, api, action } from "./api";
 import CycleForm from "./CycleForm";
 import { errors } from "./messages";
-import { initializeAuth, isRecoveryLocation, recoveryFailure } from "./auth";
+import { initializeAuth, isRecoveryLocation } from "./auth";
 import {
   approvalIssues,
   deriveNotifications,
@@ -97,20 +97,6 @@ function App() {
     [recovery, setRecovery] = useState(() =>
       isRecoveryLocation(window.location),
     );
-  const [recoveryRetryAt, setRecoveryRetryAt] = useState(
-    () => Number(localStorage.getItem("taqeem-recovery-retry-at")) || 0,
-  );
-  useEffect(() => {
-    if (!recoveryRetryAt) return;
-    const timer = setTimeout(
-      () => {
-        localStorage.removeItem("taqeem-recovery-retry-at");
-        setRecoveryRetryAt(0);
-      },
-      Math.max(0, recoveryRetryAt - Date.now()),
-    );
-    return () => clearTimeout(timer);
-  }, [recoveryRetryAt]);
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
@@ -144,8 +130,8 @@ function App() {
         setMessage({
           kind: "error",
           text: t(
-            "تعذر التحقق من رابط الدخول. اطلب رابط استعادة جديدًا وافتحه في المتصفح نفسه الذي طلبته منه.",
-            "The sign-in link could not be verified. Request a new recovery link and open it in the same browser you used to request it.",
+            "تعذر التحقق من رابط الدخول. تواصل مع مسؤول النظام لتحديث بيانات الدخول.",
+            "The sign-in link could not be verified. Contact your system administrator to update your sign-in details.",
           ),
         });
         setReady(true);
@@ -1720,8 +1706,8 @@ function App() {
               <div>
                 <p role="alert">
                   {t(
-                    "رابط الاستعادة منتهي أو تعذر التحقق منه. اطلب رابطًا جديدًا وافتحه في المتصفح نفسه، ويمكنك فتحه في تبويب جديد.",
-                    "This recovery link has expired or could not be verified. Request a new link and open it in the same browser; a new tab is supported.",
+                    "هذا الرابط غير صالح. تواصل مع مسؤول النظام لتحديث بيانات الدخول.",
+                    "This link is not valid. Contact your system administrator to update your sign-in details.",
                   )}
                 </p>
                 <button
@@ -1732,7 +1718,7 @@ function App() {
                     setMessage(null);
                   }}
                 >
-                  {t("طلب رابط جديد", "Request a new link")}
+                  {t("العودة لتسجيل الدخول", "Back to sign in")}
                 </button>
               </div>
             ) : session && !me && !recovery ? (
@@ -1819,69 +1805,12 @@ function App() {
                       : t("تسجيل الدخول", "Sign in")}
                 </button>
                 {!recovery && (
-                  <button
-                    type="button"
-                    className="text-button"
-                    disabled={
-                      loading || !configured || recoveryRetryAt > Date.now()
-                    }
-                    onClick={async (e) => {
-                      const email = e.currentTarget.form.elements.email.value;
-                      if (!email) {
-                        setMessage({
-                          kind: "error",
-                          text: t(
-                            "اكتب بريدك أولاً.",
-                            "Enter your email first.",
-                          ),
-                        });
-                        return;
-                      }
-                      if (loading || recoveryRetryAt > Date.now()) return;
-                      setLoading(true);
-                      try {
-                        const { error: err } =
-                          await supabase.auth.resetPasswordForEmail(email, {
-                            redirectTo:
-                              window.location.origin + "/reset-password",
-                          });
-                        if (err) throw err;
-                        setMessage({
-                          kind: "success",
-                          text: t(
-                            "إذا كان البريد مسجلاً فستصلك رسالة جديدة. افتح أحدث رسالة في المتصفح نفسه، ولا تطلب رابطًا آخر أثناء الانتظار.",
-                            "If the email is registered, a new email will arrive. Open the latest email in the same browser, and do not request another link while waiting.",
-                          ),
-                        });
-                        const until = Date.now() + 60000;
-                        localStorage.setItem(
-                          "taqeem-recovery-retry-at",
-                          String(until),
-                        );
-                        setRecoveryRetryAt(until);
-                      } catch (err) {
-                        const failure = recoveryFailure(err);
-                        setMessage({ kind: "error", text: t(...failure.text) });
-                        if (failure.retryMs) {
-                          const until = Date.now() + failure.retryMs;
-                          localStorage.setItem(
-                            "taqeem-recovery-retry-at",
-                            String(until),
-                          );
-                          setRecoveryRetryAt(until);
-                        }
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                  >
-                    {recoveryRetryAt > Date.now()
-                      ? t(
-                          "انتظر قبل طلب رابط آخر",
-                          "Please wait before requesting another link",
-                        )
-                      : t("نسيت كلمة المرور؟", "Forgot password?")}
-                  </button>
+                  <p className="hint">
+                    {t(
+                      "لتحديث كلمة المرور، تواصل مع مسؤول النظام.",
+                      "Contact your system administrator to update your password.",
+                    )}
+                  </p>
                 )}
               </form>
             )}
