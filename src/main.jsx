@@ -33,6 +33,7 @@ import {
 import { configure, supabase, api, action } from "./api";
 import CycleForm from "./CycleForm";
 import { errors } from "./messages";
+import { initializeAuth, isRecoveryLocation } from "./auth";
 import {
   approvalIssues,
   deriveNotifications,
@@ -93,7 +94,9 @@ function App() {
     [query, setQuery] = useState(""),
     [filter, setFilter] = useState("all"),
     [tour, setTour] = useState(-1),
-    [recovery, setRecovery] = useState(false);
+    [recovery, setRecovery] = useState(() =>
+      isRecoveryLocation(window.location),
+    );
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
@@ -107,17 +110,30 @@ function App() {
         if (!alive) return;
         setConfigured(yes);
         if (yes) {
-          const { data } = await supabase.auth.getSession();
-          if (alive) setSession(data.session);
-          subscription = supabase.auth.onAuthStateChange((event, s) => {
-            if (!alive) return;
-            setSession(s);
-            if (event === "PASSWORD_RECOVERY") setRecovery(true);
-          }).data.subscription;
+          await initializeAuth(supabase, {
+            session: (s) => {
+              if (alive) setSession(s);
+            },
+            recovery: () => {
+              if (alive) setRecovery(true);
+            },
+            subscription: (s) => {
+              subscription = s;
+              if (!alive) s.unsubscribe();
+            },
+          });
         }
-        setReady(true);
+        if (alive) setReady(true);
       })
       .catch(() => {
+        if (!alive) return;
+        setMessage({
+          kind: "error",
+          text: t(
+            "تعذر التحقق من رابط الدخول. اطلب رابط استعادة جديدًا وافتحه في المتصفح نفسه الذي طلبته منه.",
+            "The sign-in link could not be verified. Request a new recovery link and open it in the same browser you used to request it.",
+          ),
+        });
         setReady(true);
       });
     return () => {
@@ -1666,8 +1682,12 @@ function App() {
             </h2>
             <p className="hint">
               {t(
-                "ادخل بحسابك الشخصي؛ اسمك يسجل تلقائياً في السجلات.",
-                "Use your personal account; your name is recorded automatically.",
+                recovery
+                  ? "اختر كلمة مرور جديدة لا تقل عن 12 حرفًا."
+                  : "ادخل بحسابك الشخصي؛ اسمك يسجل تلقائياً في السجلات.",
+                recovery
+                  ? "Choose a new password with at least 12 characters."
+                  : "Use your personal account; your name is recorded automatically.",
               )}
             </p>
             {alert}
@@ -1682,7 +1702,26 @@ function App() {
                 </span>
               </div>
             )}
-            {session && !me && !recovery ? (
+            {recovery && !session ? (
+              <div>
+                <p role="alert">
+                  {t(
+                    "رابط الاستعادة منتهي أو تعذر التحقق منه. اطلب رابطًا جديدًا وافتحه في المتصفح نفسه، ويمكنك فتحه في تبويب جديد.",
+                    "This recovery link has expired or could not be verified. Request a new link and open it in the same browser; a new tab is supported.",
+                  )}
+                </p>
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    window.history.replaceState(null, "", "/");
+                    setRecovery(false);
+                    setMessage(null);
+                  }}
+                >
+                  {t("طلب رابط جديد", "Request a new link")}
+                </button>
+              </div>
+            ) : session && !me && !recovery ? (
               <>
                 <p>
                   {t(
@@ -1712,6 +1751,16 @@ function App() {
                           password: v.password,
                         });
                     if (result.error) throw result.error;
+                    if (recovery) {
+                      window.history.replaceState(null, "", "/");
+                      setMessage({
+                        kind: "success",
+                        text: t(
+                          "تم حفظ كلمة المرور الجديدة.",
+                          "Your new password has been saved.",
+                        ),
+                      });
+                    }
                     setRecovery(false);
                   } catch (e) {
                     error(e);
@@ -1774,7 +1823,8 @@ function App() {
                       }
                       const { error: err } =
                         await supabase.auth.resetPasswordForEmail(email, {
-                          redirectTo: window.location.origin,
+                          redirectTo:
+                            window.location.origin + "/reset-password",
                         });
                       if (err) error(err);
                       else

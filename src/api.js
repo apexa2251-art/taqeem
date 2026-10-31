@@ -8,7 +8,8 @@ export async function configure() {
     supabase = createClient(c.url, c.key, {
       auth: {
         persistSession: true,
-        storage: window.sessionStorage,
+        // PKCE verifier must survive opening the email link in a new tab.
+        storage: window.localStorage,
         detectSessionInUrl: true,
         flowType: "pkce",
       },
