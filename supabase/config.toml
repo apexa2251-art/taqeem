@@ -1,0 +1,4 @@
+[functions.manage-staff]
+# The handler verifies user JWTs with Auth.getUser and checks protected profiles.
+# Dashboard-only recovery accepts an exact server-provisioned secret key.
+verify_jwt = false
