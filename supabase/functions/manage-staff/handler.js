@@ -42,7 +42,17 @@ export function createStaffHandler({
     if (Number(request.headers.get("content-length") || 0) > 4096)
       return reply(413, { error: "INPUT_TOO_LARGE" });
     try {
-      const input = await request.json();
+      // The authenticated Dashboard can submit a password as plain text, so
+      // the account owner does not have to edit JSON containing credentials.
+      const dashboardTarget =
+        isDashboard && new URL(request.url).searchParams.get("reset_admin");
+      const input = dashboardTarget
+        ? {
+            op: "reset_password",
+            user_id: dashboardTarget,
+            password: await request.text(),
+          }
+        : await request.json();
       if (
         !input ||
         !["create", "reset_password", "change_own_password"].includes(input.op)
