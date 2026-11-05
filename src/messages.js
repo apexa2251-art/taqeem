@@ -180,6 +180,43 @@ export const errors = {
     "أقصى حجم للمرفق ١٠ ميجابايت.",
     "Maximum attachment size is 10 MB.",
   ],
+  SELF_CHANGE_FORBIDDEN: [
+    "لا يمكنك إيقاف حسابك بنفسك.",
+    "You cannot deactivate your own account.",
+  ],
+  LAST_ADMIN: [
+    "لا يمكن إيقاف آخر مسؤول عام فعّال.",
+    "The last active system administrator cannot be deactivated.",
+  ],
+  USER_REQUIRED: ["اختر الموظف.", "Select the staff member."],
+  NOT_FOUND: [
+    "العنصر غير موجود في هذا الفرع أو تم تحديثه. حدّث الصفحة.",
+    "The item was not found in this branch or has changed. Refresh the page.",
+  ],
+  CLINICAL_AUTHORIZATION_REQUIRED: [
+    "قرار الدورة يتطلب تخويل «اعتماد» ساريًا في هذا الفرع، وعضوية في الفرع. يضيفه المسؤول العام من تتبع الأدوات.",
+    "A cycle decision needs a valid “approve” qualification in this branch and branch membership. The system administrator adds it under Instrument tracking.",
+  ],
+  CYCLE_START_REQUIRED: [
+    "وثّق بدء التشغيل من صفحة تتبع الأدوات قبل إرسال الدورة.",
+    "Record the cycle start in Instrument tracking before submitting.",
+  ],
+  PACKAGES_NOT_LINKED_OR_LABELLED: [
+    "بعض الأكياس المرتبطة غير مؤكدة الملصق، أو تتبع إصدارًا سابقًا من الدورة. أكياس الإصدار السابق تحتاج إعادة معالجة أولًا.",
+    "Some linked packages are not label-confirmed or belong to a previous cycle version. Previous-version packages must be reprocessed first.",
+  ],
+  PACKAGE_COUNT_MISMATCH: [
+    "عدد العبوات في الدورة لا يطابق الأكياس المرتبطة بهذا الإصدار.",
+    "The pack count does not match the packages linked to this version.",
+  ],
+  PACKAGE_CONTENT_MISMATCH: [
+    "محتويات الدورة لا تطابق محتويات الأكياس المرتبطة.",
+    "Cycle contents do not match the linked packages.",
+  ],
+  STARTED_CYCLE_IDENTITY_LOCKED: [
+    "بعد توثيق بدء التشغيل لا يمكن تغيير الجهاز أو رقم الدورة أو التاريخ أو البرنامج.",
+    "After the start is recorded, device, cycle number, date and program cannot change.",
+  ],
   REQUEST_FAILED: [
     "تعذر إكمال العملية. حاول مجدداً؛ إذا استمر الخطأ تواصل مع المسؤول.",
     "The request failed. Try again or contact your administrator.",

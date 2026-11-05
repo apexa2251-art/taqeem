@@ -31,7 +31,7 @@ import {
   X,
   HelpCircle,
 } from "lucide-react";
-import { configure, supabase, api, action } from "./api";
+import { configure, supabase, api, action, adminAction } from "./api";
 import CycleForm from "./CycleForm";
 import { StaffAccessPanel, OwnPasswordPanel } from "./AccountAccess";
 import { errors } from "./messages";
@@ -87,6 +87,7 @@ function App() {
     [configured, setConfigured] = useState(false),
     [session, setSession] = useState(null),
     [me, setMe] = useState(null),
+    [meError, setMeError] = useState(""),
     [branch, setBranch] = useState(""),
     [data, setData] = useState(empty),
     [page, setPage] = useState("home"),
@@ -146,9 +147,15 @@ function App() {
     };
   }, []);
   const error = (e) => {
-    const key = Object.keys(errors).find(
-      (k) => e.code === k || e.message?.includes(k),
-    );
+    // Exact code first, then the longest contained code, so that e.g.
+    // SELF_CHANGE_FORBIDDEN is not reported as the generic FORBIDDEN.
+    const keys = Object.keys(errors);
+    const key =
+      keys.find((k) => e.code === k || e.message === k) ||
+      keys
+        .filter((k) => e.message?.includes(k))
+        .sort((a, b) => b.length - a.length)[0];
+    const code = String(e.code || e.message || "").slice(0, 80);
     setMessage({
       kind: "error",
       text: key
@@ -156,12 +163,13 @@ function App() {
         : t(
             "تعذر إكمال العملية. راجع بيانات الدخول والاتصال أو تواصل مع المسؤول.",
             "Unable to complete the operation. Check credentials and connectivity or contact your administrator.",
-          ),
+          ) + (code ? ` (${code})` : ""),
     });
   };
   useEffect(() => {
     let alive = true;
     setMe(null);
+    setMeError("");
     setBranch("");
     setData(empty);
     if (session)
@@ -177,7 +185,10 @@ function App() {
             );
           }
         })
-        .catch(error);
+        .catch((e) => {
+          if (alive) setMeError(e.message || "REQUEST_FAILED");
+          error(e);
+        });
     return () => {
       alive = false;
     };
@@ -578,8 +589,45 @@ function App() {
               <span>
                 {devCode(p.device_id)} · {p.name}
                 <small>{p.ifu}</small>
+                {!p.active && (
+                  <b className="inactive-tag">
+                    {t(
+                      "موقوف — لا يُختار لدورات جديدة",
+                      "Retired — not selectable for new cycles",
+                    )}
+                  </b>
+                )}
               </span>
               <span>{p.approved_name}</span>
+              {canAdmin && (
+                <button
+                  className={p.active ? "danger" : "secondary"}
+                  disabled={loading}
+                  onClick={() =>
+                    window.confirm(
+                      p.active
+                        ? t(
+                            `إيقاف البرنامج «${p.name}»؟ الدورات السابقة تحتفظ بمعاييره، ولن يُختار لدورات جديدة.`,
+                            `Retire program "${p.name}"? Past cycles keep its criteria; it cannot be chosen for new cycles.`,
+                          )
+                        : t(
+                            `إعادة تفعيل البرنامج «${p.name}»؟`,
+                            `Reactivate program "${p.name}"?`,
+                          ),
+                    ) &&
+                    run(() =>
+                      adminAction("set_program_active", branch, {
+                        id: p.id,
+                        active: !p.active,
+                      }),
+                    )
+                  }
+                >
+                  {p.active
+                    ? t("إيقاف البرنامج", "Retire program")
+                    : t("إعادة التفعيل", "Reactivate")}
+                </button>
+              )}
             </div>
           ))}
           {!data.programs.length && (
@@ -1510,6 +1558,12 @@ function App() {
                         {p.system_admin
                           ? t("مسؤول عام", "System administrator")
                           : ""}
+                        {!p.active && (
+                          <b className="inactive-tag">
+                            {" "}
+                            {t("موقوف", "Deactivated")}
+                          </b>
+                        )}
                       </small>
                     </span>
                     <span>
@@ -1518,6 +1572,60 @@ function App() {
                         .map((m) => `${m.branch_id} · ${m.role}`)
                         .join(" / ")}
                     </span>
+                    {p.id !== me.profile.id && (
+                      <span className="row-actions">
+                        {data.memberships.some(
+                          (m) => m.user_id === p.id && m.branch_id === branch,
+                        ) && (
+                          <button
+                            className="secondary"
+                            disabled={loading}
+                            onClick={() =>
+                              window.confirm(
+                                t(
+                                  `إزالة ${p.full_name} من الفرع الحالي؟ تُوقف تخويلاته فيه وتبقى سجلاته.`,
+                                  `Remove ${p.full_name} from the current branch? Their tracking qualifications there are suspended; records are kept.`,
+                                ),
+                              ) &&
+                              run(() =>
+                                adminAction("remove_member", branch, {
+                                  user_id: p.id,
+                                }),
+                              )
+                            }
+                          >
+                            {t("إزالة من الفرع", "Remove from branch")}
+                          </button>
+                        )}
+                        <button
+                          className={p.active ? "danger" : "secondary"}
+                          disabled={loading}
+                          onClick={() =>
+                            window.confirm(
+                              p.active
+                                ? t(
+                                    `إيقاف حساب ${p.full_name}؟ لن يتمكن من الوصول لأي فرع، وتُوقف تخويلات التتبع. تبقى سجلاته.`,
+                                    `Deactivate ${p.full_name}? They lose access to every branch and their tracking qualifications are suspended. Records are kept.`,
+                                  )
+                                : t(
+                                    `إعادة تفعيل ${p.full_name}؟ تخويلات التتبع لا تعود تلقائيًا.`,
+                                    `Reactivate ${p.full_name}? Tracking qualifications are not restored automatically.`,
+                                  ),
+                            ) &&
+                            run(() =>
+                              adminAction("set_active", branch, {
+                                user_id: p.id,
+                                active: !p.active,
+                              }),
+                            )
+                          }
+                        >
+                          {p.active
+                            ? t("إيقاف الحساب", "Deactivate")
+                            : t("إعادة التفعيل", "Reactivate")}
+                        </button>
+                      </span>
+                    )}
                   </div>
                 ))}
               </section>
@@ -1763,11 +1871,26 @@ function App() {
               </div>
             ) : session && !me && !recovery ? (
               <>
-                <p>
-                  {t(
-                    "جارٍ تحميل صلاحيات حسابك، أو يحتاج حسابك تفعيل المسؤول.",
-                    "Loading your permissions, or your account needs administrator provisioning.",
-                  )}
+                <p role={meError ? "alert" : undefined}>
+                  {!meError
+                    ? t(
+                        "جارٍ تحميل صلاحيات حسابك…",
+                        "Loading your permissions…",
+                      )
+                    : meError === "ACCOUNT_NOT_ASSIGNED"
+                      ? t(
+                          "تم تسجيل الدخول، لكن حسابك غير مفعّل في تعقيم أو موقوف. تواصل مع المسؤول العام.",
+                          "You are signed in, but your Taqeem account is not activated or has been deactivated. Contact the system administrator.",
+                        )
+                      : meError === "AUTH_REQUIRED"
+                        ? t(
+                            "انتهت الجلسة أو لم تُقبل. سجّل الخروج ثم الدخول مجددًا.",
+                            "Your session expired or was not accepted. Sign out and sign in again.",
+                          )
+                        : t(
+                            "تم تسجيل الدخول، لكن تعذّر تحميل بيانات الحساب. الرمز: ",
+                            "You are signed in, but your account data could not be loaded. Code: ",
+                          ) + meError}
                 </p>
                 <button
                   className="secondary"

@@ -38,6 +38,12 @@ export function action(op, branch, input) {
     body: JSON.stringify({ op, branch, input }),
   });
 }
+export function adminAction(op, branch, input) {
+  return api("/admin/" + encodeURIComponent(branch), {
+    method: "POST",
+    body: JSON.stringify({ op, input }),
+  });
+}
 export async function staffAction(input) {
   const { data, error } = await supabase.functions.invoke("manage-staff", {
     body: input,

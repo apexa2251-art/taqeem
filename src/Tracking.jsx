@@ -257,6 +257,26 @@ export default function Tracking({
           "التكليف لا يمنح التأهيل؛ تحقّق من التخويل وتاريخ انتهائه.",
           "Assignment does not grant competence; check qualification expiry.",
         ),
+        START_BLOCKED: t(
+          "لا يمكن توثيق البدء: يجب أن تكون الدورة مسودة ببرنامج، وكل أكياسها محمّلة ومؤكدة الملصق ومن الإصدار الحالي، ولم يُوثّق بدؤها سابقًا.",
+          "Start blocked: the cycle must be a draft with a program, and every package loaded, label-confirmed and on the current version, with no earlier start recorded.",
+        ),
+        DRAFT_CYCLE_REQUIRED: t(
+          "اختر دورة مسودة ببرنامج لم يُوثّق بدؤها بعد.",
+          "Choose a draft cycle with a program whose start is not yet recorded.",
+        ),
+        LABEL_CONFIRMATION_REQUIRED: t(
+          "أكّد الملصق على دورة مسودة بالإصدار الحالي، وتحقق أن الصلاحية لا تسبق تاريخ التشغيل.",
+          "Confirm the label on a current-version draft cycle and check expiry is not before the operating date.",
+        ),
+        RETURN_AND_REASON_REQUIRED: t(
+          "اكتب السبب، وأكّد إرجاع الكيس فعليًا إذا كان مستدعى.",
+          "Give a reason and confirm physical return for a recalled package.",
+        ),
+        INVALID_STATE: t(
+          "الكيس ليس في المرحلة المناسبة لهذا الإجراء.",
+          "The package is not at the right stage for this action.",
+        ),
         ZONE_TASK_MISMATCH: t(
           "المهام لا تطابق المنطقة المختارة.",
           "Tasks do not match the selected zone.",
@@ -713,6 +733,27 @@ export default function Tracking({
                   {devices.find((d) => d.id === c.device_id)?.code} /{" "}
                   {c.machine_number}
                 </b>
+                {data.packages.some(
+                  (p) => p.cycle_id === c.id && p.cycle_version !== c.version,
+                ) && (
+                  <p className="status danger" role="alert">
+                    {t(
+                      "تم تصحيح هذه الدورة بعد ربط أكياس بإصدارها السابق: ",
+                      "This cycle was corrected after packages were linked to its previous version: ",
+                    )}
+                    {data.packages
+                      .filter(
+                        (p) =>
+                          p.cycle_id === c.id && p.cycle_version !== c.version,
+                      )
+                      .map((p) => p.code)
+                      .join("، ")}
+                    {t(
+                      ". أعد معالجة هذه الأكياس أولًا (إعادة المعالجة)، ولن يمكن بدء التشغيل أو الإرسال قبل ذلك.",
+                      ". Reprocess these packages first; starting or submitting is blocked until then.",
+                    )}
+                  </p>
+                )}
                 <button
                   disabled={busy || c.workflow !== "draft"}
                   onClick={() => run("start_cycle", { id: c.id })}

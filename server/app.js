@@ -207,6 +207,23 @@ export function createApp(env = process.env, dependencies = {}) {
     if (error) return fail(res, error);
     res.json(data);
   });
+  app.post("/api/admin/:branch", async (req, res) => {
+    const { op, input } = req.body || {};
+    if (
+      typeof op !== "string" ||
+      !input ||
+      Array.isArray(input) ||
+      typeof input !== "object"
+    )
+      return res.status(400).json({ error: "INVALID_INPUT" });
+    const { data, error } = await req.db.rpc("admin_ops", {
+      op,
+      b: req.params.branch,
+      input,
+    });
+    if (error) return fail(res, error);
+    res.json(data);
+  });
   app.post("/api/action", async (req, res) => {
     const { op, branch, input } = req.body || {};
     if (
