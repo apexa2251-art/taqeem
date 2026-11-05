@@ -52,6 +52,7 @@ export default function Tracking({
     [busy, setBusy] = useState(false),
     [search, setSearch] = useState(""),
     [printQr, setPrintQr] = useState(""),
+    [printKey, setPrintKey] = useState(0),
     [rows, setRows] = useState([{ name: "", sent: 1 }]),
     [camera, setCamera] = useState(false),
     [status, setStatus] = useState("");
@@ -290,6 +291,7 @@ export default function Tracking({
     const QR = await import("qrcode");
     const url = await QR.toDataURL("TAQEEM:" + p.code, { width: 200 });
     setPrintQr(url);
+    setPrintKey((k) => k + 1);
     setSelected(p.id);
   }
   return (
@@ -489,6 +491,23 @@ export default function Tracking({
                         "Ready / collected / remaining",
                       )}
                       : {ready} / {done} / {ps.length - done}
+                      <br />
+                      {t(
+                        "الأدوات المتبقية دون التالف",
+                        "Outstanding items excluding damage",
+                      )}
+                      :{" "}
+                      {s.received
+                        ? s.received.reduce(
+                            (n, x) =>
+                              n + Number(x.received) - Number(x.damaged),
+                            0,
+                          ) -
+                          ps
+                            .filter((p) => p.stage === "collected")
+                            .flatMap((p) => p.contents)
+                            .reduce((n, x) => n + Number(x.quantity), 0)
+                        : t("بانتظار المطابقة", "Awaiting matching")}
                     </p>
                     {!s.received_at &&
                       Date.now() > Date.parse(s.expected_at) && (
@@ -902,6 +921,7 @@ export default function Tracking({
                         )}
                       </p>
                       <img
+                        key={printKey}
                         src={printQr}
                         alt={t("رمز الكيس", "Package QR")}
                         onLoad={() => window.print()}
