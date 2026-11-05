@@ -1,3 +1,4 @@
+import Tracking from "./Tracking";
 import React, { useEffect, useState, useCallback } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -49,6 +50,7 @@ import "@fontsource/ibm-plex-sans-arabic/700.css";
 import "@fontsource-variable/inter";
 import "./styles.css";
 const navigation = [
+  ["tracking", Package, "استلام وتسليم الأدوات", "Instrument tracking"],
   ["home", LayoutDashboard, "نظرة عامة", "Overview"],
   ["cycles", List, "سجل الدورات", "Cycle log"],
   ["new", PlusCircle, "دورة جديدة", "New cycle"],
@@ -72,6 +74,7 @@ const empty = {
   cycle_versions: [],
   audit_events: [],
   notification_receipts: [],
+  tr_grants: [],
   profiles: [],
   memberships: [],
 };
@@ -239,7 +242,16 @@ function App() {
       "branch_admin",
       "system_admin",
     ].includes(role),
-    canReview = ["reviewer", "branch_admin", "system_admin"].includes(role),
+    canReview =
+      ["reviewer", "branch_admin", "system_admin"].includes(role) &&
+      data.tr_grants.some(
+        (g) =>
+          g.user_id === me?.profile.id &&
+          g.branch_id === branch &&
+          g.task === "approve" &&
+          g.active &&
+          Date.parse(g.valid_until) > Date.now(),
+      ),
     canAdmin = ["branch_admin", "system_admin"].includes(role);
   const cycles = data.cycles
       .slice()
@@ -497,7 +509,7 @@ function App() {
         <div className="help">
           <Info size={18} />
           {t(
-            "الأجهزة الأربعة غير موزعة تلقائياً. يحدد المسؤول فرع كل جهاز ويضبط البرامج ومعايير القبول من تعليمات المصنع.",
+            "الأجهزة تحتاج تعيينًا؛ المستهدف ٤ ببريدة و٢ بعنيزة. يحدد المسؤول فرع كل جهاز ويضبط البرامج ومعايير القبول من تعليمات المصنع.",
             "The four devices are not assigned automatically. An administrator assigns each device and configures programs and criteria from manufacturer instructions.",
           )}
         </div>
@@ -858,6 +870,20 @@ function App() {
     );
   }
   function content() {
+    if (page === "tracking")
+      return (
+        <Tracking
+          onReload={reload}
+          key={branch}
+          branch={branch}
+          profile={me.profile}
+          cycles={cycles}
+          devices={data.devices}
+          profiles={data.profiles}
+          t={t}
+          onError={error}
+        />
+      );
     if (page === "new")
       return canWrite ? (
         <CycleForm
