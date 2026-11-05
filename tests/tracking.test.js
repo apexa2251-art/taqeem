@@ -248,6 +248,23 @@ test("manual, no-print workflow: differences, split cycles, mixed clinics, parti
     }
     for (const c of cycles) {
       await rpc("start_cycle", { id: c.id });
+      if (c.id === cycles[0].id) {
+        const linked = (
+          await db.query("select * from cycles where id=$1", [c.id])
+        ).rows[0];
+        await mutate("save_cycle", {
+          ...linked,
+          payload: {
+            ...linked.payload,
+            items: [{ name: "Wrong item", quantity: 2 }],
+          },
+        });
+        await assert.rejects(
+          () => mutate("submit_cycle", { id: c.id }),
+          /PACKAGE_CONTENT_MISMATCH/,
+        );
+        await mutate("save_cycle", linked);
+      }
       await mutate("submit_cycle", { id: c.id });
     }
     await as(1);
