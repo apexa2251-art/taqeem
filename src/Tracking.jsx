@@ -86,17 +86,13 @@ export default function Tracking({
   }
   async function scan() {
     try {
-      if (!window.BarcodeDetector) {
-        setStatus(
-          t(
-            "المسح غير مدعوم هنا؛ استخدم البحث اليدوي دائمًا.",
-            "Camera scanning is unavailable; use manual search.",
-          ),
-        );
-        return;
-      }
+      stopCamera();
       setCamera(true);
       const epoch = ++scanEpoch.current;
+      const decode = window.BarcodeDetector
+        ? null
+        : (await import("jsqr")).default;
+      if (epoch !== scanEpoch.current) return;
       const media = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
@@ -109,15 +105,61 @@ export default function Tracking({
         if (!video.current) return;
         video.current.srcObject = stream.current;
         video.current.play();
-        const detector = new window.BarcodeDetector({ formats: ["qr_code"] });
+        const detector = window.BarcodeDetector
+          ? new window.BarcodeDetector({ formats: ["qr_code"] })
+          : null;
+        const canvas = document.createElement("canvas");
+        let detecting = false;
         scanTimer.current = setInterval(async () => {
+          if (detecting || !video.current || epoch !== scanEpoch.current)
+            return;
+          detecting = true;
           try {
-            const r = await detector.detect(video.current);
-            if (r[0]) {
-              setSearch(r[0].rawValue.replace(/^TAQEEM:/, ""));
-              stopCamera();
+            let raw;
+            if (detector) {
+              raw = (await detector.detect(video.current))[0]?.rawValue;
+            } else if (video.current.readyState >= 2) {
+              canvas.width = Math.min(video.current.videoWidth, 960);
+              canvas.height = Math.round(
+                (video.current.videoHeight * canvas.width) /
+                  video.current.videoWidth,
+              );
+              const context = canvas.getContext("2d", {
+                willReadFrequently: true,
+              });
+              context.drawImage(
+                video.current,
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+              );
+              const frame = context.getImageData(
+                0,
+                0,
+                canvas.width,
+                canvas.height,
+              );
+              raw = decode(frame.data, frame.width, frame.height)?.data;
             }
-          } catch {}
+            if (raw && epoch === scanEpoch.current) {
+              const code = raw.replace(/^TAQEEM:/, "");
+              if (/^[BU]-[PS][0-9]+$/.test(code)) {
+                setSearch(code);
+                setPage(code.includes("-P") ? "packages" : "shipments");
+                stopCamera();
+              } else
+                setStatus(
+                  t(
+                    "رمز غير تابع لتعقيم؛ استخدم الرقم اليدوي.",
+                    "Unknown code; use manual entry.",
+                  ),
+                );
+            }
+          } catch {
+          } finally {
+            detecting = false;
+          }
         }, 700);
       }, 100);
     } catch {
