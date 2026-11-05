@@ -114,6 +114,7 @@ export function createApp(env = process.env, dependencies = {}) {
       "cycle_versions",
       "audit_events",
       "notification_receipts",
+      "tr_grants",
     ];
     const result = {};
     for (const table of tables) {
@@ -151,6 +152,60 @@ export function createApp(env = process.env, dependencies = {}) {
       result.memberships = m.data;
     }
     res.json(result);
+  });
+  app.get("/api/tracking/:branch", async (req, res) => {
+    const result = {};
+    for (const name of [
+      "clinics",
+      "clinic_users",
+      "grants",
+      "boxes",
+      "templates",
+      "shipments",
+      "packages",
+      "assignments",
+      "handovers",
+      "settings",
+      "events",
+    ]) {
+      result[name] = [];
+      for (let offset = 0; ; offset += 500) {
+        const { data, error } = await req.db
+          .from("tr_" + name)
+          .select("*")
+          .eq("branch_id", req.params.branch)
+          .order(name === "settings" ? "branch_id" : "id")
+          .range(offset, offset + 499);
+        if (error) return fail(res, error);
+        result[name].push(...data);
+        if (data.length < 500) break;
+      }
+    }
+    const people = await req.db.rpc("tracking", {
+      op: "people",
+      b: req.params.branch,
+      input: {},
+    });
+    if (people.error) return fail(res, people.error);
+    result.people = people.data;
+    res.json(result);
+  });
+  app.post("/api/tracking/:branch", async (req, res) => {
+    const { op, input } = req.body || {};
+    if (
+      typeof op !== "string" ||
+      !input ||
+      Array.isArray(input) ||
+      typeof input !== "object"
+    )
+      return res.status(400).json({ error: "INVALID_INPUT" });
+    const { data, error } = await req.db.rpc("tracking", {
+      op,
+      b: req.params.branch,
+      input,
+    });
+    if (error) return fail(res, error);
+    res.json(data);
   });
   app.post("/api/action", async (req, res) => {
     const { op, branch, input } = req.body || {};
