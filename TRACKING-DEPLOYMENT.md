@@ -25,7 +25,7 @@ Redeploy the previous frontend/server commit to hide the new unit. Retain tracki
 ## Limits
 
 - No physical device control, printer protocol integration or patient linking.
-- Camera support depends on native BarcodeDetector/browser; unsupported devices retain manual lookup.
+- Camera support depends on native BarcodeDetector or bundled jsQR fallback. HTTPS, camera permission and a suitable camera are required; actual iPad camera testing remains outstanding.
 - No claim of full browser/mobile E2E validation until actually performed in target environment.
 - Training evidence and staffing are recorded declarations that require organisational review.
 - Outstanding historical cycles remain; no retroactive packaging assumptions are generated.
