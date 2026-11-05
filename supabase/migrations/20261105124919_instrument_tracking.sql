@@ -105,6 +105,9 @@ begin
  if new.workflow='submitted' and old.workflow='draft' and exists(select 1 from public.tr_packages where cycle_id=new.id) and not exists(select 1 from public.tr_events where entity_id=new.id and action='cycle.started' and (detail->>'version')::integer=new.version) then raise exception 'CYCLE_START_REQUIRED';end if;
  if new.workflow='submitted' and old.workflow='draft' and exists(select 1 from public.tr_packages p where p.cycle_id=new.id and (p.cycle_version<>new.version or not p.label_confirmed or p.stage<>'loaded')) then raise exception 'PACKAGES_NOT_LINKED_OR_LABELLED';end if;
  if new.workflow='submitted' and old.workflow='draft' and exists(select 1 from public.tr_packages p where p.cycle_id=new.id) and (new.payload->>'packs')::integer<>(select count(*) from public.tr_packages where cycle_id=new.id and cycle_version=new.version) then raise exception 'PACKAGE_COUNT_MISMATCH';end if;
+ if new.workflow='submitted' and old.workflow='draft' and exists(select 1 from public.tr_packages where cycle_id=new.id) and
+ (select coalesce(jsonb_agg(jsonb_build_object('name',q.name,'quantity',q.qty) order by q.name),'[]') from (select z->>'name' name,sum((z->>'quantity')::integer) qty from public.tr_packages pp cross join lateral jsonb_array_elements(pp.contents) z where pp.cycle_id=new.id and pp.cycle_version=new.version group by z->>'name')q)
+ is distinct from (select coalesce(jsonb_agg(jsonb_build_object('name',q.name,'quantity',q.qty) order by q.name),'[]') from (select z->>'name' name,sum((z->>'quantity')::integer) qty from jsonb_array_elements(new.payload->'items') z group by z->>'name')q) then raise exception 'PACKAGE_CONTENT_MISMATCH';end if;
  if new.version<>old.version or (new.decision is distinct from old.decision and new.decision in ('H','X')) then
   perform private.tr_log(new.branch_id,null,new.id,'cycle.invalidated',jsonb_build_object('previous_version',old.version,'decision',new.decision));
   update public.tr_packages set stage=case when stage='collected' then 'recalled' else 'held' end,recall_reason='CYCLE_INVALIDATED' where cycle_id=new.id and cycle_version=old.version;
@@ -270,6 +273,7 @@ begin
   end loop;rid:=c.id;
  elsif op='assignment' then
   if not private.tr_task(b,'supervise') then raise exception 'SUPERVISOR_AUTHORIZATION_REQUIRED';end if;
+  perform 1 from public.profiles where id=(input->>'user_id')::uuid for update;
   startat:=(input->>'starts_at')::timestamptz;endat:=(input->>'ends_at')::timestamptz;
   if startat is null or endat is null or endat<=startat then raise exception 'INVALID_PERIOD';end if;
   ids:=array[]::uuid[];
