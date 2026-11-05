@@ -2084,3 +2084,54 @@ input:disabled {
   color: #6f888c;
   font-weight: 400;
 }
+
+.tracking-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+.tracking .panel {
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.tracking .fields {
+  margin: 12px 0;
+}
+.tracking form button {
+  margin: 6px;
+}
+.tracking-label {
+  border: 1px dashed var(--primary, #0a8a80);
+  padding: 12px;
+  margin: 12px 0;
+}
+.tracking summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 10px;
+}
+.tracking pre {
+  max-width: 100%;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+.package-print {
+  display: none;
+}
+@media print {
+  body:has(.package-print) * {
+    visibility: hidden;
+  }
+  body:has(.package-print) .package-print,
+  body:has(.package-print) .package-print * {
+    visibility: visible;
+  }
+  .package-print {
+    display: block;
+    position: absolute;
+    inset: 0;
+    background: white;
+    color: black;
+    padding: 12mm;
+  }
+}
