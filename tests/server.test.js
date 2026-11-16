@@ -38,3 +38,12 @@ test("a secret mistakenly assigned to the public variable is never exposed", asy
   assert.equal(r.body.key, "");
   assert.equal((await request(app).get("/api/health")).body.configured, false);
 });
+
+test("only the Apex Care platform may show Taqeem inside its page", async () => {
+  const res = await request(createApp({})).get("/api/health");
+  const csp = res.headers["content-security-policy"];
+  assert.match(csp, /frame-ancestors https:\/\/apexcare-platform\.onrender\.com(;|$)/);
+  assert.equal(res.headers["x-frame-options"], undefined);
+  const other = await request(createApp({ FRAME_ANCESTORS: "javascript:alert(1)" })).get("/api/health");
+  assert.match(other.headers["content-security-policy"], /frame-ancestors 'none'/, "anything but an https origin is ignored");
+});
