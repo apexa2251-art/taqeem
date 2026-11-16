@@ -5,6 +5,15 @@ import { createClient } from "@supabase/supabase-js";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+const PLATFORM_ORIGIN = "https://apexcare-platform.onrender.com";
+/** Sites allowed to show Taqeem inside their page: the platform, or FRAME_ANCESTORS (comma-separated https origins). */
+export function frameAncestors(list) {
+  const items = String(list || PLATFORM_ORIGIN)
+    .split(",")
+    .map((s) => s.trim())
+    .filter((o) => /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(o));
+  return items.length ? items : ["'none'"];
+}
 export function createApp(env = process.env, dependencies = {}) {
   const publicKey = env.SUPABASE_PUBLISHABLE_KEY || "";
   let allowedKey = publicKey.startsWith("sb_publishable_");
@@ -34,9 +43,11 @@ export function createApp(env = process.env, dependencies = {}) {
             "wss://*.supabase.co",
           ],
           objectSrc: ["'none'"],
-          frameAncestors: ["'none'"],
+          // shown inside the Apex Care platform's tab; no other site may frame it
+          frameAncestors: frameAncestors(env.FRAME_ANCESTORS),
         },
       },
+      xFrameOptions: false, // superseded by frame-ancestors (it cannot name another site)
     }),
   );
   app.use(
